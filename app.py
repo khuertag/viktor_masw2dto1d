@@ -1,6 +1,18 @@
-from viktor import ViktorController, ViktorParametrization
-from viktor.parametrization import FileField, NumberField, ChoiceField
-from viktor.result import DownloadResult, PlotResult
+
+
+
+from viktor import ViktorController
+#from viktor.geometry import Point, Sphere
+#from viktor.views import GeometryView, GeometryResult, DataView, DataResult, DataGroup, DataItem
+from viktor.parametrization import ViktorParametrization, OptionField, TextField, DownloadButton, AutocompleteField
+from viktor.views import PlotlyResult, PlotlyView, PlotlyAndDataResult, PlotlyAndDataView, DataGroup, DataItem
+from viktor.parametrization import FileField, NumberField #, ChoiceField
+from viktor.result import DownloadResult #, PlotResult
+
+
+
+from pathlib import Path
+import plotly.graph_objects as go
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,18 +21,15 @@ from scipy.interpolate import griddata
 
 # Parametrization Class
 class Parametrization(ViktorParametrization):
-    uploaded_file = FileField('Subir archivo XYZ:', allowed_extensions=['xyz', 'txt'])
-    tipo_grafico = ChoiceField('Seleccionar Tipo de Grafico de XYZ:', choices=['grid', 'scale', 'contour'])
+    uploaded_file = FileField('Subir archivo XYZ:', file_types=['.xyz', '.txt'], max_size=5_000_000)
+    tipo_grafico = OptionField('Seleccionar Tipo de Grafico de XYZ:', options=['grid', 'scale', 'contour'])
     distancia = NumberField('Introducir la distancia de extracción del perfil:', default=30)
     delta_velocidad = NumberField('Introducir el delta del contorno de velocidad:', default=50)
-    tipo_extraccion = ChoiceField('Seleccionar Tipo de Extracción:', choices=['default', 'delta', 'rango'])
+    tipo_extraccion = OptionField('Seleccionar Tipo de Extracción:', options=['default', 'delta', 'rango'])
     parametro_extra = NumberField('Ingresar Parámetro para Extracción:', default=1)
 
+    download_btn = DownloadButton('Download file', method = 'download_file')
 
-
-class Controller(ViktorController):
-    label = 'My Entity Type'
-    parametrization = Parametrization
 
 
 # Controller Class
@@ -35,6 +44,7 @@ class Controller(ViktorController):
     def download_csv(self, params, **kwargs):
         # Your CSV download logic here
         pass
+        return DownloadResult(file_content = '', file_name='my_file.txt')
     
 
 # Add your existing functions here, modifying them to return results rather than using Streamlit's st.pyplot or st.download_button
