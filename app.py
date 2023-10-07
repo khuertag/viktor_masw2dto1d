@@ -60,7 +60,16 @@ class Controller(ViktorController):
 	# Function to visualize data in a table
     @DataView("Visualizar Datos", duration_guess=1)
     def visualize_data(self, params, **kwargs):
-        data = params['data']  # Assuming 'data' is stored in params
+		file_resource = params.uploaded_file  # Esto debería ser un objeto FileResource
+		file_object = file_resource.file  # Esto debería ser un objeto File
+		# Leer el archivo en un DataFrame
+		try:
+			data = pd.read_csv(file_object, sep=' +', engine='python', names=['X', 'Y', 'Vs'])
+			params['data'] = data  # Assuming 'data' is stored in params
+		except Exception as e:
+			print(f"Error al leer el archivo: {e}")
+			
+        
         perfil_extraido = params.get('perfil_extraido', None)  # Assuming 'perfil_extraido' is stored in params
 
         # Create DataGroup for MASW2D data
@@ -94,12 +103,12 @@ class Controller(ViktorController):
     # Function to plot 2D profile (MASW2D)
     @PlotlyView("Graficar Perfil 2D", duration_guess=1)
     def graficar_perfil2D(self, params, **kwargs):
-        uploaded_file = params.uploaded_file
+        data = params.data
         tipo_grafico = params.tipo_grafico
         delta_velocidad = params.delta_velocidad
 
-        data = pd.read_csv(uploaded_file, sep=' +', engine='python', names=['X', 'Y', 'Vs'])
-        params['data'] = data
+        #data = pd.read_csv(uploaded_file, sep=' +', engine='python', names=['X', 'Y', 'Vs'])
+        #params['data'] = data
 
         x = data['X']
         y = data['Y']
