@@ -57,30 +57,34 @@ class Controller(ViktorController):
 
     # Add your existing functions here, modifying them to return results rather than using Streamlit's st.pyplot or st.download_button
 	
-	# Function to visualize data in a table
-    @DataView("Visualizar Datos", duration_guess=1)
-    def visualize_data(self, params, **kwargs):
-		file_resource = params.uploaded_file  # Esto debería ser un objeto FileResource
-		file_object = file_resource.file  # Esto debería ser un objeto File
-		# Leer el archivo en un DataFrame
-		try:
-			data = pd.read_csv(file_object, sep=' +', engine='python', names=['X', 'Y', 'Vs'])
-			params['data'] = data  # Assuming 'data' is stored in params
-		except Exception as e:
-			print(f"Error al leer el archivo: {e}")
-			
-        
+    # Function to visualize imported data in a table
+    @DataView("Visualizar Datos Importados", duration_guess=1)
+    def visualize_imported_data(self, params, **kwargs):
+        file_resource = params.uploaded_file  # Esto debería ser un objeto FileResource
+        if file_resource is not None:
+            file_object = file_resource.file  # Esto debería ser un objeto File
+            # Leer el archivo en un DataFrame
+            try:
+                data = pd.read_csv(file_object, sep=' +', engine='python', names=['X', 'Y', 'Vs'])
+                params['data'] = data  # Storing 'data' in params
+            except Exception as e:
+                print(f"Error al leer el archivo: {e}")
+
+            masw2d_group = DataGroup(
+                DataItem('Número de puntos', len(data)),
+                DataItem('Valor mínimo de Vs', data['Vs'].min()),
+                DataItem('Valor máximo de Vs', data['Vs'].max())
+            )
+
+            return DataResult(masw2d_group)
+        else:
+            return DataResult(DataGroup(DataItem('Mensaje', 'No se ha subido ningún archivo')))
+
+    # Function to visualize extracted profile in a table
+    @DataView("Visualizar Perfil Extraído", duration_guess=1)
+    def visualize_extracted_profile(self, params, **kwargs):
         perfil_extraido = params.get('perfil_extraido', None)  # Assuming 'perfil_extraido' is stored in params
 
-        # Create DataGroup for MASW2D data
-        masw2d_group = DataGroup(
-            DataItem('Número de puntos', len(data)),
-            DataItem('Valor mínimo de Vs', data['Vs'].min()),
-            DataItem('Valor máximo de Vs', data['Vs'].max())
-        )
-
-        # Create DataGroup for extracted profile, if available
-        perfil_group = DataGroup()
         if perfil_extraido is not None:
             perfil_group = DataGroup(
                 DataItem('Número de puntos', len(perfil_extraido)),
@@ -90,13 +94,9 @@ class Controller(ViktorController):
                 DataItem('Velocidad máxima', perfil_extraido['Velocidad (m/s)'].max())
             )
 
-        # Combine both DataGroups into one
-        combined_group = DataGroup(
-            DataItem('Datos MASW2D', '', subgroup=masw2d_group),
-            DataItem('Perfil Extraído', '', subgroup=perfil_group)
-        )
-
-        return DataResult(combined_group)
+            return DataResult(perfil_group)
+        else:
+            return DataResult(DataGroup(DataItem('Mensaje', 'No se ha extraído ningún perfil')))
 		
 	
 	
