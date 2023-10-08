@@ -1,16 +1,18 @@
 
 
 
-from viktor import ViktorController
+from viktor import ViktorController, progress_message
 #from viktor.geometry import Point, Sphere
 #from viktor.views import GeometryView, GeometryResult, DataView, DataResult, DataGroup, DataItem
 from viktor.parametrization import ViktorParametrization, OptionField, TextField, DownloadButton, SetParamsButton, AutocompleteField
 from viktor.views import PlotlyResult, PlotlyView, PlotlyAndDataResult, PlotlyAndDataView, DataGroup, DataItem
-from viktor.parametrization import FileField, NumberField, ActionButton #, ChoiceField
+from viktor.parametrization import FileField, NumberField, ActionButton, HiddenField #, ChoiceField
 from viktor.result import DownloadResult #, PlotResult
 from viktor.views import DataGroup, DataItem, DataResult, DataView
-from viktor.result import SetParamsResult
+from viktor.result import SetParamsResult, SetParametersResult
+from viktor import File, UserError
 
+from munch import Munch, unmunchify
 from pathlib import Path
 import plotly.graph_objects as go
 import pandas as pd
@@ -21,6 +23,13 @@ from scipy.interpolate import griddata
 from copy import deepcopy
 import re
 import json
+import logging
+
+file_path = Path(__file__).parent / 'debug_viktor.log'
+logging.basicConfig(filename=file_path, level=logging.DEBUG)
+
+
+
 
 # Parametrization Class
 class Parametrization(ViktorParametrization):
@@ -37,7 +46,10 @@ class Parametrization(ViktorParametrization):
     #visualize_imported_data_button = ActionButton('Visualizar Datos Importados', method='visualize_imported_data')
     #visualize_extracted_profile_button = ActionButton('Visualizar Perfil Extraído', method='visualize_extracted_profile')
     cargar_datos_btn = SetParamsButton('Cargar Datos', method='cargar_datos')
-
+    cargar_datos_simple_btn = SetParamsButton('Cargar Datos Simple', method='cargar_datos_simple')
+    valor_numerico = HiddenField("valor numerico")
+    valor_str = HiddenField("valor str")
+    tabla = HiddenField("valores de tabla")
 # Controller Class
 class Controller(ViktorController):
     label = 'Aplicación para Extraer y Visualizar Perfil MASW2D'
@@ -76,8 +88,35 @@ class Controller(ViktorController):
         else:
             return DataResult(DataGroup(DataItem('Mensaje', 'No se ha subido ningún archivo')))
     
+    #@staticmethod
+    def cargar_datos_simple(self, params, **kwargs) -> SetParamsResult:
+        progress_message("Antes de Loggingg")
+        logging.debug('Entrando a la función cargar_datos')
+        progress_message("Despues de inicio Logging")
+        progress_message(f"numero munch {params}")
+
+        valor_numerico = 1000
+        valor_str = 'texto str'
+        tabla_list = [
+                {'c1': 'a text', 'c2': 3.5, 'c3': True},
+                {'c2': 4.5, 'c3': False, 'c1': 'another text'},
+            ] 
+        progress_message(f"Valores {valor_numerico} y {valor_str} ")
+        progress_message(f"Valores {tabla_list} ")
+        
+        logging.debug('Saliendo de la función cargar_datos')
+        progress_message("Despues de fin Logging")
+
+
+        return SetParamsResult({
+            'valor_numerico': valor_numerico,  # valor numerico para agregar a params
+            'valor_str': valor_str,  # cadena de texto par aañadir a params
+            'tabla': tabla_list
+        })
+
     @staticmethod
-    def cargar_datos(params, **kwargs):
+    def cargar_datos(self, params, **kwargs):
+        logging.debug('Entrando a la función cargar_datos')
         file_resource = params.uploaded_file  # Esto debería ser un objeto FileResource
         if file_resource is not None:
             file_object = file_resource.file  # Esto debería ser un objeto File
@@ -88,17 +127,20 @@ class Controller(ViktorController):
             for line in file_content.split('\n'):
                 line_values = list(map(float, line.strip().split()))
                 data_list.append(line_values)
-
+            
+            progress_message(f"Lina1 Data {data_list[0]}")
+            
             # Convertir la lista de listas en un DataFrame de pandas
             data = pd.DataFrame(data_list, columns=['X', 'Y', 'Vs'])
             data_dict = data.to_dict('records')
-
+            progress_message(f"Datos encabezados {data.head()}")
             # Convertir el diccionario a una cadena JSON
             data_json = json.dumps(data_dict)
-
+            progress_message(f"Datos en json {data_json}")
+            logging.debug('Saliendo de la función cargar_datos')
             # Actualizar los parámetros existentes y añadir el nuevo 'data'
+            
             return SetParamsResult({
-                #"uploaded_file": params.uploaded_file,  # Mantener el archivo cargado
                 "data": data_json  # Añadir el nuevo parámetro 'data' como una cadena JSON
             })
         
@@ -154,11 +196,36 @@ class Controller(ViktorController):
                 "data": data_dict  # Añadir el nuevo parámetro 'data' como un diccionario
             })
 
-
-
     # Function to visualize imported data in a table
-    @DataView("Visualizar Datos Importados 2", duration_guess=1)
+    @DataView("Visualizar Datos  2", duration_guess=1)
     def visualize_imported_data2(self, params, **kwargs):
+        numero = params.get('valor_numerico', None)  # Obtener 'data' de params si está disponible
+        texto = params.get('valor_str', None)  # Obtener 'data' de params si está disponible
+        tabla = params.get('tabla', None)  # Obtener 'data' de params si está disponible
+        progress_message(f"recuperacion de numero {numero}")
+        progress_message(f"recuperacion de texto {texto}")
+        progress_message(f"recuperacion de tabla {tabla}")
+        #numero2 = params.valor_numerico
+        progress_message(f"parametros: {params}")
+
+        if numero is None:
+            numero = 0000
+        if texto is None:
+            texto = "No pasa parametro"
+
+        masw2d_group = DataGroup(
+            DataItem('Distancia', params.distancia),
+            DataItem('tipo extraccion', params.tipo_extraccion),
+            DataItem('doble velocidad', 2*params.delta_velocidad),
+            DataItem('Valor Recuperado', numero),
+            DataItem('Texto Recuperado', texto),
+        )
+        return DataResult(masw2d_group)
+    
+
+    # Function to visualize imported data in a table3
+    @DataView("Visualizar Datos import 3", duration_guess=1)
+    def visualize_imported_data3(self, params, **kwargs):
         data_json = params.get('data', None)  # Obtener 'data' de params si está disponible
 
         if data_json is not None:
@@ -182,9 +249,8 @@ class Controller(ViktorController):
     def graficar_perfil2D(self, params, **kwargs):
         try:
             data_json = params.get('data', None)  # Obtener 'data' de params si está disponible
-            data_dict = json.loads(data_json)
-
-            if data_dict is not None:
+            if data_json is not None:
+                data_dict = json.loads(data_json)
                 # Convertir el diccionario de nuevo a DataFrame para el procesamiento
                 data = pd.DataFrame.from_dict(data_dict)
                 #data = data_dict
@@ -231,7 +297,7 @@ class Controller(ViktorController):
                 return PlotlyResult({"error": "No se ha subido ningún archivo o los datos no están disponibles"})
         except Exception as e:
             return PlotlyResult({"error": f"Se produjo un error: {str(e)}"})
-
+    """
     # Function to visualize extracted profile in a table
     @DataView("Visualizar Perfil Extraído", duration_guess=1)
     def visualize_extracted_profile(self, params, **kwargs):
@@ -255,10 +321,11 @@ class Controller(ViktorController):
     # Function to plot the velocity profile with a stepped appearance
     @PlotlyView("Graficar Perfil Escalonado", duration_guess=1)
     def graficar_perfil_escalones(self, params, **kwargs):
-        data_dict = params.get('data', None)  # Obtener 'data' de params si está disponible
+        data_json = params.get('data', None)  # Obtener 'data' de params si está disponible
         distancia = params.distancia
 
-        if data_dict is not None:
+        if data_json is not None:
+            data_dict = json.loads(data_json)
             # Convertir el diccionario de nuevo a DataFrame para el procesamiento
             data = pd.DataFrame.from_dict(data_dict)
             
@@ -314,7 +381,7 @@ class Controller(ViktorController):
         # Converting the DataFrame to CSV format
         csv = perfil_to_save.to_csv(index=False)
         return DownloadResult(file_content=csv.encode('utf-8'), file_name='perfil_extraido.csv')
-
+    """
 
 
 
