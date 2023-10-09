@@ -39,7 +39,7 @@ class Parametrization(ViktorParametrization):
     delta_velocidad = NumberField('Introducir el delta del contorno de velocidad:', default=50)
     tipo_extraccion = OptionField('Seleccionar Tipo de Extracción:', options=['default', 'delta', 'rango'], default = 'delta')
     parametro_extra = TextField('Ingresar Parámetro para Extracción:', default="1")
-    extract_button = ActionButton('Extraer Perfil', method = 'extraer_perfil_X_corregido')
+    extract_button = ActionButton('Extraer Perfil', method = 'extraer_perfil')
     #plot_button = ActionButton('Graficar Perfil MASW2D', method = 'graficar_perfil2D')
     #plot_button_extraido = ActionButton('Graficar Perfil Extraído', method = 'graficar_perfil_escalones')
     download_btn = DownloadButton('Download file', method = 'extraer_csv')
@@ -50,6 +50,9 @@ class Parametrization(ViktorParametrization):
     valor_numerico = HiddenField("valor numerico")
     valor_str = HiddenField("valor str")
     tabla = HiddenField("valores de tabla")
+    data = HiddenField("valores de datos")
+    perfil_extraido = HiddenField("valores de datos de perfil")
+
 # Controller Class
 class Controller(ViktorController):
     label = 'Aplicación para Extraer y Visualizar Perfil MASW2D'
@@ -114,8 +117,8 @@ class Controller(ViktorController):
             'tabla': tabla_list
         })
 
-    @staticmethod
-    def cargar_datos(self, params, **kwargs):
+    #@staticmethod
+    def cargar_datos(self, params, **kwargs) -> SetParamsResult:
         logging.debug('Entrando a la función cargar_datos')
         file_resource = params.uploaded_file  # Esto debería ser un objeto FileResource
         if file_resource is not None:
@@ -132,6 +135,7 @@ class Controller(ViktorController):
             
             # Convertir la lista de listas en un DataFrame de pandas
             data = pd.DataFrame(data_list, columns=['X', 'Y', 'Vs'])
+            data = data.dropna()
             data_dict = data.to_dict('records')
             progress_message(f"Datos encabezados {data.head()}")
             # Convertir el diccionario a una cadena JSON
@@ -141,7 +145,7 @@ class Controller(ViktorController):
             # Actualizar los parámetros existentes y añadir el nuevo 'data'
             
             return SetParamsResult({
-                "data": data_json  # Añadir el nuevo parámetro 'data' como una cadena JSON
+                'data': data_json  # Añadir el nuevo parámetro 'data' como una cadena JSON
             })
         
     #@staticmethod
@@ -269,7 +273,7 @@ class Controller(ViktorController):
                 if tipo_grafico == 'grid':
                     fig.add_trace(go.Scatter(x=x, y=y, mode='markers', marker=dict(color=vs, colorscale='RdYlGn', size=5)))
                 else:
-                    xi, yi = np.linspace(x.min(), x.max(), 500), np.linspace(y.min(), y.max(), 500)
+                    xi, yi = np.linspace(x.min(), x.max(), 100), np.linspace(y.min(), y.max(), 100)
                     xi, yi = np.meshgrid(xi, yi)
                     zi = griddata((x, y), vs, (xi, yi), method='linear')
 
@@ -297,13 +301,38 @@ class Controller(ViktorController):
                 return PlotlyResult({"error": "No se ha subido ningún archivo o los datos no están disponibles"})
         except Exception as e:
             return PlotlyResult({"error": f"Se produjo un error: {str(e)}"})
-    """
+    
+    
+    def extraer_perfil(self, params, **kwargs) -> SetParamsResult:
+        data_json = params.get('data', None)  # Obtener 'data' de params si está disponible
+        distancia = params.distancia
+
+        if data_json is not None:
+            data_dict = json.loads(data_json)
+            # Convertir el diccionario de nuevo a DataFrame para el procesamiento
+            data = pd.DataFrame.from_dict(data_dict)
+            data = data.dropna()
+            perfil_data = extraer_perfil_X_corregido(distancia, data)
+            perfil_dict = data.to_dict('records')
+            progress_message(f"Datos encabezados {perfil_data.head()}")
+            # Convertir el diccionario a una cadena JSON
+            perfil_json = json.dumps(perfil_dict)
+            progress_message(f"Perfil json {perfil_json}")
+
+        return SetParamsResult({
+            'perfil_extraido': perfil_json,  # valor numerico para agregar a params
+        })
+    
     # Function to visualize extracted profile in a table
     @DataView("Visualizar Perfil Extraído", duration_guess=1)
     def visualize_extracted_profile(self, params, **kwargs):
-        perfil_extraido = params.get('perfil_extraido', None)  # Assuming 'perfil_extraido' is stored in params
+        perfil_json = params.get('perfil_extraido', None)  # Assuming 'perfil_extraido' is stored in params
 
-        if perfil_extraido is not None:
+        if perfil_json is not None:
+            perfil_dict = json.loads(perfil_json)
+            # Convertir el diccionario de nuevo a DataFrame para el procesamiento
+            perfil_extraido = pd.DataFrame.from_dict(perfil_dict)
+            perfil_extraido = perfil_extraido.dropna()
             perfil_group = DataGroup(
                 DataItem('Número de puntos', len(perfil_extraido)),
                 DataItem('Profundidad mínima', perfil_extraido['Profundidad'].min()),
@@ -321,17 +350,13 @@ class Controller(ViktorController):
     # Function to plot the velocity profile with a stepped appearance
     @PlotlyView("Graficar Perfil Escalonado", duration_guess=1)
     def graficar_perfil_escalones(self, params, **kwargs):
-        data_json = params.get('data', None)  # Obtener 'data' de params si está disponible
-        distancia = params.distancia
+        perfil_json = params.get('perfil_extraido', None)  # Assuming 'perfil_extraido' is stored in params
 
-        if data_json is not None:
-            data_dict = json.loads(data_json)
-            # Convertir el diccionario de nuevo a DataFrame para el procesamiento
-            data = pd.DataFrame.from_dict(data_dict)
-            
-            perfil_data = extraer_perfil_X_corregido(distancia, data)
-            params['perfil_extraido'] = perfil_data
-
+        if perfil_json is not None:
+            perfil_dict = json.loads(perfil_json)
+                # Convertir el diccionario de nuevo a DataFrame para el procesamiento
+            perfil_data = pd.DataFrame.from_dict(perfil_dict)
+            perfil_data = perfil_data.dropna()
             fig = go.Figure()
 
             fig.add_trace(go.Scatter(x=perfil_data['Velocidad (m/s)'], y=perfil_data['Profundidad'], mode='lines+markers', line=dict(color='red')))
@@ -381,7 +406,7 @@ class Controller(ViktorController):
         # Converting the DataFrame to CSV format
         csv = perfil_to_save.to_csv(index=False)
         return DownloadResult(file_content=csv.encode('utf-8'), file_name='perfil_extraido.csv')
-    """
+
 
 
 
