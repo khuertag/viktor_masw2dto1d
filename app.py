@@ -365,9 +365,9 @@ class Controller(ViktorController):
                 title='Perfil de Velocidades (Apariencia Escalonada)',
                 xaxis_title='Velocidad de ondas de corte (m/s)',
                 yaxis_title='Profundidad (m)',
-                yaxis=dict(autorange='reversed'),
-                legend_title=dict(text=f'Distancia = {distancia} m'),
-                gridcolor='lightgray'
+                xaxis=dict(gridcolor='gray'),  # Establecer el color de la cuadrícula del eje X
+                yaxis=dict(gridcolor='gray', autorange='reversed'),   # Establecer el color de la cuadrícula del eje Y
+                plot_bgcolor='rgba(0,0,0,0)'  # Esto establecerá un fondo transparente
             )
 
             return PlotlyResult(fig.to_json())
@@ -379,7 +379,11 @@ class Controller(ViktorController):
     def extraer_csv(self, params, **kwargs):
         
         #perfil_extraido, tipo_extraccion, profundidad=1, vector_profundidad=None
-        perfil_extraido = params.perfil_extraido
+        perfil_json = params.get('perfil_extraido', None)
+        perfil_dict = json.loads(perfil_json)
+        # Convertir el diccionario de nuevo a DataFrame para el procesamiento
+        perfil_data = pd.DataFrame.from_dict(perfil_dict)
+        perfil_extraido = perfil_data.dropna()
         tipo_extraccion = params.tipo_extraccion
         parametro_extra_str = params.parametro_extra
         
