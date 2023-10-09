@@ -38,15 +38,10 @@ class Parametrization(ViktorParametrization):
     distancia = NumberField('Introducir la distancia de extracción del perfil:', default=30)
     delta_velocidad = NumberField('Introducir el delta del contorno de velocidad:', default=50)
     tipo_extraccion = OptionField('Seleccionar Tipo de Extracción:', options=['default', 'delta', 'rango'], default = 'delta')
-    parametro_extra = TextField('Ingresar Parámetro para Extracción:', default="1")
+    parametro_extra = TextField('Ingresar Parámetro para Descarga:', default="1")
     extract_button = SetParamsButton('Extraer Perfil', method = 'extraer_perfil')
-    #plot_button = ActionButton('Graficar Perfil MASW2D', method = 'graficar_perfil2D')
-    #plot_button_extraido = ActionButton('Graficar Perfil Extraído', method = 'graficar_perfil_escalones')
     download_btn = DownloadButton('Download file', method = 'extraer_csv')
-    #visualize_imported_data_button = ActionButton('Visualizar Datos Importados', method='visualize_imported_data')
-    #visualize_extracted_profile_button = ActionButton('Visualizar Perfil Extraído', method='visualize_extracted_profile')
     cargar_datos_btn = SetParamsButton('Cargar Datos', method='cargar_datos')
-    cargar_datos_simple_btn = SetParamsButton('Cargar Datos Simple', method='cargar_datos_simple')
     valor_numerico = HiddenField("valor numerico")
     valor_str = HiddenField("valor str")
     tabla = HiddenField("valores de tabla")
@@ -58,64 +53,6 @@ class Controller(ViktorController):
     label = 'Aplicación para Extraer y Visualizar Perfil MASW2D'
     parametrization = Parametrization
 
-    # Function to visualize imported data in a table
-    @DataView("Ver Datos Importados", duration_guess=1)
-    def visualize_imported_data(self, params, **kwargs):
-        data = params.get('data', None)  # Obtener 'data' de params si está disponible
-
-        if data is None:
-            file_resource = params.uploaded_file  # Esto debería ser un objeto FileResource
-            if file_resource is not None:
-                file_object = file_resource.file  # Esto debería ser un objeto File
-                file_content = file_object.getvalue()  # Obtener el contenido del archivo como una cadena
-
-                # Convertir cada línea en una lista de flotantes
-                data_list = []
-                for line in file_content.split('\n'):
-                    line_values = list(map(float, line.strip().split()))
-                    data_list.append(line_values)
-
-                # Convertir la lista de listas en un DataFrame de pandas
-                data = pd.DataFrame(data_list, columns=['X', 'Y', 'Vs'])
-
-                # Almacenar 'data' en params para su uso posterior
-                params['data'] = data
-
-        if data is not None:
-            masw2d_group = DataGroup(
-                DataItem('Número de puntos', len(data)),
-                DataItem('Valor mínimo de Vs', data['Vs'].min()),
-                DataItem('Valor máximo de Vs', data['Vs'].max()),
-            )
-            return DataResult(masw2d_group)
-        else:
-            return DataResult(DataGroup(DataItem('Mensaje', 'No se ha subido ningún archivo')))
-    
-    #@staticmethod
-    def cargar_datos_simple(self, params, **kwargs) -> SetParamsResult:
-        progress_message("Antes de Loggingg")
-        logging.debug('Entrando a la función cargar_datos')
-        progress_message("Despues de inicio Logging")
-        progress_message(f"numero munch {params}")
-
-        valor_numerico = 1000
-        valor_str = 'texto str'
-        tabla_list = [
-                {'c1': 'a text', 'c2': 3.5, 'c3': True},
-                {'c2': 4.5, 'c3': False, 'c1': 'another text'},
-            ] 
-        progress_message(f"Valores {valor_numerico} y {valor_str} ")
-        progress_message(f"Valores {tabla_list} ")
-        
-        logging.debug('Saliendo de la función cargar_datos')
-        progress_message("Despues de fin Logging")
-
-
-        return SetParamsResult({
-            'valor_numerico': valor_numerico,  # valor numerico para agregar a params
-            'valor_str': valor_str,  # cadena de texto par aañadir a params
-            'tabla': tabla_list
-        })
 
     #@staticmethod
     def cargar_datos(self, params, **kwargs) -> SetParamsResult:
@@ -148,87 +85,10 @@ class Controller(ViktorController):
                 'data': data_json  # Añadir el nuevo parámetro 'data' como una cadena JSON
             })
         
-    #@staticmethod
-    def cargar_datos1(self, params, **kwargs):
-        file_resource = params.uploaded_file  # Esto debería ser un objeto FileResource
-        if file_resource is not None:
-            file_object = file_resource.file  # Esto debería ser un objeto File
-            file_content = file_object.getvalue()  # Obtener el contenido del archivo como una cadena
 
-            # Convertir cada línea en una lista de flotantes
-            data_list = []
-            for line in file_content.split('\n'):
-                line_values = list(map(float, line.strip().split()))
-                data_list.append(line_values)
-
-            # Convertir la lista de listas en un DataFrame de pandas
-            data = pd.DataFrame(data_list, columns=['X', 'Y', 'Vs'])
-            data_dict = data.to_dict('records')
-            # Actualizar los parámetros existentes y añadir el nuevo 'data'
-            return SetParamsResult({
-                "uploaded_file": params.uploaded_file,  # Limpiar el archivo cargado si lo deseas
-                "data": data_dict # Añadir el nuevo parámetro 'data'
-            })
-
-    def cargar_datos2(self, params, **kwargs):
-        file_resource = params.uploaded_file  # Esto debería ser un objeto FileResource
-        if file_resource is not None:
-            file_object = file_resource.file  # Esto debería ser un objeto File
-            file_content = file_object.getvalue()  # Obtener el contenido del archivo como una cadena
-
-            # Convertir cada línea en una lista de flotantes
-            data_list = []
-            for line in file_content.split('\n'):
-                line_values = list(map(float, line.strip().split()))
-                data_list.append(line_values)
-
-            # Convertir la lista de listas en un DataFrame de pandas
-            data = pd.DataFrame(data_list, columns=['X', 'Y', 'Vs'])
-
-            # Convertir el DataFrame a un diccionario
-            #data_dict = data.to_dict()
-            data_dict = data.to_dict('records')
-
-            # Actualizar los parámetros existentes y añadir el nuevo 'data'
-            return SetParamsResult({
-                "uploaded_file": params.uploaded_file,  # Limpiar el archivo cargado si lo deseas
-                "tipo_grafico": params.tipo_grafico,  # Mantener el valor existente
-                "distancia": params.distancia,  # Mantener el valor existente
-                "delta_velocidad": params.delta_velocidad,  # Mantener el valor existente
-                "tipo_extraccion": params.tipo_extraccion,  # Mantener el valor existente
-                "parametro_extra": params.parametro_extra,  # Mantener el valor existente
-                "data": data_dict  # Añadir el nuevo parámetro 'data' como un diccionario
-            })
-
-    # Function to visualize imported data in a table
-    @DataView("Ver datos simple", duration_guess=1)
-    def visualize_imported_data2(self, params, **kwargs):
-        numero = params.get('valor_numerico', None)  # Obtener 'data' de params si está disponible
-        texto = params.get('valor_str', None)  # Obtener 'data' de params si está disponible
-        tabla = params.get('tabla', None)  # Obtener 'data' de params si está disponible
-        progress_message(f"recuperacion de numero {numero}")
-        progress_message(f"recuperacion de texto {texto}")
-        progress_message(f"recuperacion de tabla {tabla}")
-        #numero2 = params.valor_numerico
-        progress_message(f"parametros: {params}")
-
-        if numero is None:
-            numero = 0000
-        if texto is None:
-            texto = "No pasa parametro"
-
-        masw2d_group = DataGroup(
-            DataItem('Distancia', params.distancia),
-            DataItem('tipo extraccion', params.tipo_extraccion),
-            DataItem('doble velocidad', 2*params.delta_velocidad),
-            DataItem('Valor Recuperado', numero),
-            DataItem('Texto Recuperado', texto),
-        )
-        return DataResult(masw2d_group)
-    
 
     # Function to visualize imported data in a table3
-    @DataView("Ver datos XYZ", duration_guess=1)
+    @DataView("Resumen Datos Importados", duration_guess=1)
     def visualize_imported_data3(self, params, **kwargs):
         data_json = params.get('data', None)  # Obtener 'data' de params si está disponible
 
@@ -403,6 +263,7 @@ class Controller(ViktorController):
             velocities = interpolator(vector_profundidad)
             perfil_to_save = pd.DataFrame({'Profundidad': vector_profundidad, 'Velocidad (m/s)': velocities})
         elif tipo_extraccion == 'rango':
+            vector_profundidad = parametro_extra
             interpolator = interp1d(perfil_extraido['Profundidad'], perfil_extraido['Velocidad (m/s)'], kind='linear', fill_value='extrapolate')
             velocities = interpolator(vector_profundidad)
             perfil_to_save = pd.DataFrame({'Profundidad': vector_profundidad, 'Velocidad (m/s)': velocities})
@@ -428,39 +289,3 @@ def extraer_perfil_X_corregido(distancia, data):
     # Renaming columns to represent depth and velocity
     perfil_data.columns = ['Profundidad', 'Velocidad (m/s)']
     return perfil_data
-    
-
-
-#%% funcion de json 
-def convert_df_to_json(df):
-    return df.to_dict()
-
-#serializacion incluyendo metadata del tipo de objeto a serializar
-def dict_to_json(diccionario_input):
-    diccionario_json_serializable = {}
-    diccionario = deepcopy(diccionario_input)
-    for key, value in diccionario.items():
-        if isinstance(value, dict):
-            diccionario_json_serializable[key] = {'type': 'dict', 'value': dict_to_json(value)}
-        elif isinstance(value, pd.DataFrame):
-            diccionario_json_serializable[key] = {'type': 'dataframe', 'value': convert_df_to_json(value)}
-        else:
-            diccionario_json_serializable[key] = {'type': 'primitive', 'value': value}
-    return diccionario_json_serializable
-
-
-#deserializacion usando la metadata para deserializar y recuperar los objetos
-
-def json_to_dict(json_data):
-    original_data = {}
-    for key, value in json_data.items():
-        if isinstance(value, dict) and 'type' in value:
-            if value['type'] == 'dict':
-                original_data[key] = json_to_dict(value['value'])
-            elif value['type'] == 'dataframe':
-                original_data[key] = pd.DataFrame.from_dict(value['value'])
-            else:
-                original_data[key] = value['value']
-        else:
-            original_data[key] = value
-    return original_data
