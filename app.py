@@ -39,7 +39,7 @@ class Parametrization(ViktorParametrization):
     delta_velocidad = NumberField('Introducir el delta del contorno de velocidad:', default=50)
     tipo_extraccion = OptionField('Seleccionar Tipo de Extracción:', options=['default', 'delta', 'rango'], default = 'delta')
     parametro_extra = TextField('Ingresar Parámetro para Extracción:', default="1")
-    extract_button = ActionButton('Extraer Perfil', method = 'extraer_perfil')
+    extract_button = SetParamsButton('Extraer Perfil', method = 'extraer_perfil')
     #plot_button = ActionButton('Graficar Perfil MASW2D', method = 'graficar_perfil2D')
     #plot_button_extraido = ActionButton('Graficar Perfil Extraído', method = 'graficar_perfil_escalones')
     download_btn = DownloadButton('Download file', method = 'extraer_csv')
@@ -59,7 +59,7 @@ class Controller(ViktorController):
     parametrization = Parametrization
 
     # Function to visualize imported data in a table
-    @DataView("Visualizar Datos Importados", duration_guess=1)
+    @DataView("Ver Datos Importados", duration_guess=1)
     def visualize_imported_data(self, params, **kwargs):
         data = params.get('data', None)  # Obtener 'data' de params si está disponible
 
@@ -201,7 +201,7 @@ class Controller(ViktorController):
             })
 
     # Function to visualize imported data in a table
-    @DataView("Visualizar Datos  2", duration_guess=1)
+    @DataView("Ver datos simple", duration_guess=1)
     def visualize_imported_data2(self, params, **kwargs):
         numero = params.get('valor_numerico', None)  # Obtener 'data' de params si está disponible
         texto = params.get('valor_str', None)  # Obtener 'data' de params si está disponible
@@ -228,7 +228,7 @@ class Controller(ViktorController):
     
 
     # Function to visualize imported data in a table3
-    @DataView("Visualizar Datos import 3", duration_guess=1)
+    @DataView("Ver datos XYZ", duration_guess=1)
     def visualize_imported_data3(self, params, **kwargs):
         data_json = params.get('data', None)  # Obtener 'data' de params si está disponible
 
@@ -287,7 +287,7 @@ class Controller(ViktorController):
 
 
                 fig.update_layout(
-                    title='Perfil MASW2D (Mapa de Calor)',
+                    title=f'Perfil MASW2D ({tipo_grafico})',
                     xaxis_title='X (Ubicación en línea sísmica)',
                     yaxis_title='Y (Cota topográfica)',
                     coloraxis_colorbar=dict(title='Vs (Velocidad de ondas de corte, m/s)')
@@ -313,18 +313,17 @@ class Controller(ViktorController):
             data = pd.DataFrame.from_dict(data_dict)
             data = data.dropna()
             perfil_data = extraer_perfil_X_corregido(distancia, data)
-            perfil_dict = data.to_dict('records')
-            progress_message(f"Datos encabezados {perfil_data.head()}")
+            perfil_dict = perfil_data.to_dict('records')
+            progress_message(f"Previo Perfil {perfil_data.head()}")
             # Convertir el diccionario a una cadena JSON
             perfil_json = json.dumps(perfil_dict)
-            progress_message(f"Perfil json {perfil_json}")
-
-        return SetParamsResult({
-            'perfil_extraido': perfil_json,  # valor numerico para agregar a params
-        })
+            #progress_message(f"Perfil json {perfil_json}")
+            return SetParamsResult({
+                'perfil_extraido': perfil_json,  # valor numerico para agregar a params
+            })
     
     # Function to visualize extracted profile in a table
-    @DataView("Visualizar Perfil Extraído", duration_guess=1)
+    @DataView("Ver Perfil Extraído", duration_guess=1)
     def visualize_extracted_profile(self, params, **kwargs):
         perfil_json = params.get('perfil_extraido', None)  # Assuming 'perfil_extraido' is stored in params
 
@@ -333,6 +332,7 @@ class Controller(ViktorController):
             # Convertir el diccionario de nuevo a DataFrame para el procesamiento
             perfil_extraido = pd.DataFrame.from_dict(perfil_dict)
             perfil_extraido = perfil_extraido.dropna()
+            progress_message(f"Recuperado Perfil {perfil_extraido.head()}")
             perfil_group = DataGroup(
                 DataItem('Número de puntos', len(perfil_extraido)),
                 DataItem('Profundidad mínima', perfil_extraido['Profundidad'].min()),
@@ -351,7 +351,7 @@ class Controller(ViktorController):
     @PlotlyView("Graficar Perfil Escalonado", duration_guess=1)
     def graficar_perfil_escalones(self, params, **kwargs):
         perfil_json = params.get('perfil_extraido', None)  # Assuming 'perfil_extraido' is stored in params
-
+        distancia = params.distancia
         if perfil_json is not None:
             perfil_dict = json.loads(perfil_json)
                 # Convertir el diccionario de nuevo a DataFrame para el procesamiento
